@@ -8,7 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: unzip -q FileCleaner.zip
+      - name: Unzip project
+        run: unzip -oq FileCleaner.zip
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -16,9 +17,17 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
-          build-root-directory: FileCleaner
-      - run: gradle assembleDebug --no-daemon
+      - name: Download face model (optional)
         working-directory: FileCleaner
+        run: |
+          mkdir -p app/src/main/assets
+          F=app/src/main/assets/face_model.tflite
+          curl -fL --retry 3 -o "$F" "https://github.com/estebanuri/face_recognition/raw/master/android/app/src/main/assets/mobile_face_net.tflite" || rm -f "$F"
+          if [ -f "$F" ] && [ "$(stat -c%s "$F")" -lt 100000 ]; then rm -f "$F"; fi
+          ls -la app/src/main/assets || true
+      - name: Build debug APK
+        working-directory: FileCleaner
+        run: gradle assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: FileCleaner-APK
